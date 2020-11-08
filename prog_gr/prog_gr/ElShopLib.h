@@ -8,6 +8,7 @@
 #include <Windows.h>
 using namespace std;
 
+
 HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 
 int num_of_last_row()//גסו ןנאצ‏÷ ³הואכüםמ
@@ -30,4 +31,6 @@ void opening_error(FILE *file)
 		exit(1);
 	}
 }
+
+
 #endif
