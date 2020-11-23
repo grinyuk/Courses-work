@@ -10,6 +10,12 @@ using namespace std;
 
 #define BUFFERSIZE 72
 
+void fullConsole()
+{
+	system("mode con COLS=700");
+	ShowWindow(GetConsoleWindow(), SW_MAXIMIZE);
+	SendMessage(GetConsoleWindow(), WM_SYSKEYDOWN, VK_RETURN, 0x20000000);
+}
 int GetChoiceNumberMenu()
 {
 	char string[BUFFERSIZE][BUFFERSIZE] = {
@@ -347,4 +353,42 @@ int GetChoiseGarantStatus()
 		}
 	} while (true);
 }
+int GetChoiceYesOrNot()
+{
+	char string[BUFFERSIZE][BUFFERSIZE] = {
+		" 1. Так.",
+		" 2. Ні."
+	};
+
+	char pointStart[BUFFERSIZE] = ">>";
+	char pointFinish[BUFFERSIZE] = "  ";
+	unsigned int choice = 0, row;
+	do
+	{
+		system("cls");
+		cout << " Вибраний вами пункт меню видаляє дані з файлу!" << endl;
+		cout << " Продовжити? " << endl;
+		for (row = 0; row < 2; row++)
+			printf("%s %s\n",
+				row == choice ? pointStart : pointFinish,
+				string[row]);
+		switch (_getch())
+		{
+		case 72:
+		{
+			(choice != 0) ? choice-- : choice = 1;
+			break;
+		}
+		case 80:
+		{
+			(choice != 1) ? choice++ : choice = 0;
+			break;
+		}
+		case 13:
+			return choice;
+			break;
+		}
+	} while (true);
+}
+
 #endif

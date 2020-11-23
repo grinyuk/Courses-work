@@ -1,7 +1,4 @@
-﻿/*
-	треба написати функцію для натиску довільної клавіші
-*/
-#include "pch.h"
+﻿#include "pch.h"
 #define _CRT_SECURE_NO_WARNINGS
 #include "ElShopLib.h"
 #include "MenuNav.h"
@@ -10,10 +7,12 @@
 #include <conio.h>
 #include <iomanip> 
 #include <Windows.h>
+
 #define MAX 100
+
 using namespace std;
 
-FILE *f, *fb;
+FILE *f, *fb, *f2;
 
 struct ElShop
 {
@@ -36,9 +35,35 @@ enum Colors
 	WHITE
 };
 
+void saveAllResults(ElShop shop[], int last, char comment[])
+{
+	fseek(f2, 0, SEEK_END);
+	fprintf(f2, "\n\n%s\n", comment);
+	fprintf(f2, "%s\n", "| №    |  Код  |         Найменування       |    Фірма     |     Рік      |      Ціна     |     Гарантія    |");
+	for (int i = 0; i < last; i++)
+	{
+		fprintf(f2, "%-6i\t %-8i\t %-15s\t %-11s\t %-8i\t %-10.2f\t %-7s \n", shop[i].number, shop[i].id, shop[i].name, shop[i].firm, shop[i].year, shop[i].price, shop[i].garant);
+	}
+}
+void offCursor()
+{
+	CONSOLE_CURSOR_INFO info;
+	info.dwSize = 100;
+	info.bVisible = FALSE;
+	SetConsoleCursorInfo(hConsole, &info);
+}
+void print_row(ElShop shop[], int i)
+{
+	if (shop[i].number < 10)
+	{
+		cout << left << "| " << setw(5) << shop[i].number << setw(8) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(10) << shop[i].price << setw(7) << shop[i].garant << "|" << endl;
+		return;
+	}
+	cout << left << "|" << setw(6) << shop[i].number << setw(8) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(10) << shop[i].price << setw(7) << shop[i].garant << "|" << endl;
+}
 void validation(ElShop shop[], int i)//Рекурсивна функція валідації введених даних
 {
-	if (shop[i].id < 1000 || 9999 < shop[i].id)
+	if (shop[i].id < 1000 || 9999 < shop[i].id)//Певірка на ввід чотирьохзначного числа
 	{
 		SetConsoleTextAttribute(hConsole, RED);
 		cout << " Невірний код товару" << endl;
@@ -47,7 +72,7 @@ void validation(ElShop shop[], int i)//Рекурсивна функція ва�
 		cin >> shop[i].id;
 		validation(shop, i);
 	}
-	if (strpbrk(shop[i].name, "/\?!,.;:@#$%^&*()-=_+<>|0123456789") != NULL)
+	if (strpbrk(shop[i].name, "/\?!,.;:@#$%^&*()=_+<>|0123456789") != NULL)//Пошук сторонніх символів
 	{
 		SetConsoleTextAttribute(hConsole, RED);
 		cout << " Найменування товару містить сторонні символи!" << endl;
@@ -56,7 +81,7 @@ void validation(ElShop shop[], int i)//Рекурсивна функція ва�
 		cin >> shop[i].name;
 		validation(shop, i);
 	}
-	if (strpbrk(shop[i].firm, "/\?!,.;:@#$%^&*()-=_+<>|0123456789") != NULL)
+	if (strpbrk(shop[i].firm, "/\?!,.;:@#$%^&*()=_+<>|0123456789") != NULL)//Пошук сторонніх символів
 	{
 		SetConsoleTextAttribute(hConsole, RED);
 		cout << " Назва фірми містить сторонні символи!" << endl;
@@ -65,7 +90,7 @@ void validation(ElShop shop[], int i)//Рекурсивна функція ва�
 		cin >> shop[i].firm;
 		validation(shop, i);
 	}
-	if (shop[i].year > 2020 || shop[i].year < 2000)
+	if (shop[i].year > 2020 || shop[i].year < 2000)//Перевірка коректності року випуску
 	{
 		SetConsoleTextAttribute(hConsole, RED);
 		cout << " Не коректний рік виробництва товару" << endl;
@@ -74,7 +99,7 @@ void validation(ElShop shop[], int i)//Рекурсивна функція ва�
 		cin >> shop[i].year;
 		validation(shop, i);
 	}
-	if (shop[i].price < 0)
+	if (shop[i].price < 0)//Перевірка знаку перед ціною
 	{
 		SetConsoleTextAttribute(hConsole, RED);
 		cout << " Ціна не може бути від'ємною!" << endl;
@@ -83,8 +108,8 @@ void validation(ElShop shop[], int i)//Рекурсивна функція ва�
 		cin >> shop[i].price;
 		validation(shop, i);
 	}
-	if (strcmp(shop[i].garant, "так") != 0 && strcmp(shop[i].garant, "ні") != 0)
-	{
+	if (strcmp(shop[i].garant, "так") != 0 && strcmp(shop[i].garant, "ні") != 0)//Перевірка на коректність статусу
+	{																									//гарантії
 		SetConsoleTextAttribute(hConsole, RED);
 		cout << " Не відомий статус гарантії!" << endl;
 		SetConsoleTextAttribute(hConsole, WHITE);
@@ -93,31 +118,19 @@ void validation(ElShop shop[], int i)//Рекурсивна функція ва�
 		validation(shop, i);
 	}
 }
-void search_validation(int sid, char *sname, char *sfirm, int syear)
+void row_validation(char *row)//Валідація введених даних для пошуку товарів
 {
 
-	if (sname != NULL)
+	if (row != NULL)
 	{
-		if (strpbrk(sname, "/\?!,.;:@#$%^&*()-=_+<>|0123456789") != NULL)
+		if (strpbrk(row, "/\?!,.;:@#$%^&*()=_+<>|0123456789") != NULL)
 		{
 			SetConsoleTextAttribute(hConsole, 12);
-			cout << " Найменування шуканого товару містить сторонні символи!" << endl;
+			cout << " Рядок містить сторонні символи!" << endl;
 			SetConsoleTextAttribute(hConsole, 15);
-			cout << " Введіть назву правильно: ";
-			cin >> sname;
-			search_validation(0, sname, NULL, 0);
-		}
-	}
-	if (sfirm != NULL)
-	{
-		if (strpbrk(sfirm, "/\?!,.;:@#$%^&*()-=_+<>|0123456789") != NULL)
-		{
-			SetConsoleTextAttribute(hConsole, 12);
-			cout << " Назва шуканої фірми містить сторонні символи!" << endl;
-			SetConsoleTextAttribute(hConsole, 15);
-			cout << " Введіть назву правильно: ";
-			cin >> sfirm;
-			search_validation(0, NULL, sfirm, 0);
+			cout << " Введіть дані коректно: ";
+			cin >> row;
+			row_validation(row);
 		}
 	}
 }
@@ -152,17 +165,13 @@ void print_file(ElShop shop[], int last)
 	system("cls");
 	fb = fopen("Base.bin", "rb");
 	opening_error(fb);
-	cout << " №    Код      Найменування   Фірма      Рік     Ціна     Гарантія" << endl;
+	header();
 	for (int i = 0; i < last; i++)
 	{
 		fread(&shop[i], sizeof(ElShop), 1, fb);
-		if (shop[i].number < 10)
-		{
-			cout << left << " " << setw(5) << shop[i].number << setw(9) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(9) << shop[i].price << shop[i].garant << endl;
-			continue;
-		}
-		cout << left << setw(6) << shop[i].number << setw(9) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(9) << shop[i].price << shop[i].garant << endl;
+		print_row(shop, i);
 	}
+	footer();
 	fclose(fb);
 }
 void add_row(int last)
@@ -181,6 +190,7 @@ void add_row(int last)
 	{
 		shopp[i].number = num_of_last_row() + 1 + i;
 		cin >> ws >> shopp[i].id >> shopp[i].name >> shopp[i].firm >> shopp[i].year >> shopp[i].price >> shopp[i].garant;
+		shopp[i].garant[0] = tolower(shopp[i].garant[0]);
 		validation(shopp, i);
 		fwrite(&shopp[i], sizeof(ElShop), 1, fb);
 	}
@@ -274,6 +284,8 @@ void search(ElShop shop[], int last, int x)
 {
 	fb = fopen("Base.bin", "rb");
 	opening_error(fb);
+	ElShop newShop[MAX];
+	int j = 0;
 	switch (x)
 	{
 	case 1://за кодом товару
@@ -286,28 +298,32 @@ void search(ElShop shop[], int last, int x)
 		id_product = search_id_validation(id_product);
 		system("cls");
 		cout << " Товари з кодом " << id_product << ":" << endl;
-		cout << " №    Код      Найменування   Фірма      Рік     Ціна     Гарантія" << endl;
+		header();
 		for (int i = 0; i < last; i++)
 		{
 			fread(&shop[i], sizeof(ElShop), 1, fb);//зчитуєм кожний запис в файлі
 			if (shop[i].id == id_product)//порівнюєм коди товарів
 			{
 				not_result = false;//на випадок якщо не знайдено жодного товару
-				if (shop[i].number < 10)
-				{
-					cout << left << " " << setw(5) << shop[i].number << setw(9) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(9) << shop[i].price << shop[i].garant << endl;
-					continue;
-				}
-				cout << left << setw(6) << shop[i].number << setw(9) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(9) << shop[i].price << shop[i].garant << endl;
+				print_row(shop, i);
+				newShop[j] = shop[i];
+				j++;
 			}
 		}
+		footer();
 		if (not_result)//сповіщення про відсутність товарів з таким кодом
 		{
 			system("cls");
 			SetConsoleTextAttribute(hConsole, RED);
 			cout << " Товарів з кодом " << id_product << " не знайдено!" << endl;
 			SetConsoleTextAttribute(hConsole, WHITE);
+			break;
 		}
+		char row[30] = "Товари з кодом ";
+		char com[10];
+		_itoa(id_product, com, 10);
+		strcat(row, com);
+		saveAllResults(newShop, j, row);
 		break;
 	}
 	case 2://за назвою товару
@@ -317,9 +333,10 @@ void search(ElShop shop[], int last, int x)
 		bool not_result = true;
 		cout << "Введіть назву шуканого товару: ";
 		cin >> name_product;
+		row_validation(name_product);
 		system("cls");
 		cout << " Товари з назвою " << name_product << ":" << endl;
-		cout << " №    Код      Найменування   Фірма      Рік     Ціна     Гарантія" << endl;
+		header();
 		name_product[0] = toupper(name_product[0]);
 		for (int i = 1; name_product[i] != '\0'; i++)
 		{
@@ -331,12 +348,9 @@ void search(ElShop shop[], int last, int x)
 			if (strcmp(shop[i].name, name_product) == 0)//порівнюєм назви товарів
 			{
 				not_result = false;//на випадок якщо не знайдено жодного товару
-				if (shop[i].number < 10)
-				{
-					cout << left << " " << setw(5) << shop[i].number << setw(9) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(9) << shop[i].price << shop[i].garant << endl;
-					continue;
-				}
-				cout << left << setw(6) << shop[i].number << setw(9) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(9) << shop[i].price << shop[i].garant << endl;
+				print_row(shop, i);
+				newShop[j] = shop[i];
+				j++;
 			}
 		}
 		if (not_result)//сповіщення про відсутність товарів з такою назвою
@@ -345,7 +359,11 @@ void search(ElShop shop[], int last, int x)
 			SetConsoleTextAttribute(hConsole, RED);
 			cout << " Товарів з назвою " << name_product << " не знайдено!" << endl;
 			SetConsoleTextAttribute(hConsole, WHITE);
+			break;
 		}
+		char com[30] = "Товари з назвою ";
+		strcat(com, name_product);
+		saveAllResults(newShop, j, com);
 		break;
 	}
 	case 3://за наявністю гарантії
@@ -354,40 +372,42 @@ void search(ElShop shop[], int last, int x)
 		if (GetChoiseGarantStatus())
 		{
 			system("cls");
+			char com[] = "Товари з гарантією: ";
 			cout << "\t\tТовари з гарантією" << endl;
-			cout << " №    Код      Найменування   Фірма      Рік     Ціна     Гарантія" << endl;
+			header();
 			for (int i = 0; i < last; i++)
 			{
 				fread(&shop[i], sizeof(ElShop), 1, fb);//зчитуєм кожний запис в файлі
 				if (strcmp(shop[i].garant, "так") == 0)//перевіряєм наявність гарантії
 				{
-					if (shop[i].number < 10)
-					{
-						cout << left << " " << setw(5) << shop[i].number << setw(9) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(9) << shop[i].price << shop[i].garant << endl;
-						continue;
-					}
-					cout << left << setw(6) << shop[i].number << setw(9) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(9) << shop[i].price << shop[i].garant << endl;
+					print_row(shop, i);
+					newShop[j] = shop[i];
+					j++;
 				}
 			}
+			footer();
+			saveAllResults(newShop, j, com);
+			break;
 		}
 		else
 		{
 			system("cls");
+			char com[] = "Товари без гарантії: ";
 			cout << "\t\tТовари без гарантії" << endl;
-			cout << " №    Код      Найменування   Фірма      Рік     Ціна     Гарантія" << endl;
+			header();
 			for (int i = 0; i < last; i++)
 			{
 				fread(&shop[i], sizeof(ElShop), 1, fb);//зчитуєм кожний запис в файлі
 				if (strcmp(shop[i].garant, "ні") == 0)//перевіряєм наявність гарантії
 				{
-					if (shop[i].number < 10)
-					{
-						cout << left << " " << setw(5) << shop[i].number << setw(9) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(9) << shop[i].price << shop[i].garant << endl;
-						continue;
-					}
-					cout << left << setw(6) << shop[i].number << setw(9) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(9) << shop[i].price << shop[i].garant << endl;
+					print_row(shop, i);
+					newShop[j] = shop[i];
+					j++;
 				}
 			}
+			footer();
+			saveAllResults(newShop, j, com);
+			break;
 		}
 		break;
 	}
@@ -401,28 +421,32 @@ void search(ElShop shop[], int last, int x)
 		year_product = search_year_validation(year_product);
 		system("cls");
 		cout << " Товари " << year_product << "-го року виробницва:" << endl;
-		cout << " №    Код      Найменування   Фірма      Рік     Ціна     Гарантія" << endl;
+		header();
 		for (int i = 0; i < last; i++)
 		{
 			fread(&shop[i], sizeof(ElShop), 1, fb);//зчитуєм кожний запис в файлі
 			if (shop[i].year == year_product)//порівнюєм роки випуску товарів
 			{
 				not_result = false;//на випадок якщо не знайдено жодного товару
-				if (shop[i].number < 10)
-				{
-					cout << left << " " << setw(5) << shop[i].number << setw(9) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(9) << shop[i].price << shop[i].garant << endl;
-					continue;
-				}
-				cout << left << setw(6) << shop[i].number << setw(9) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(9) << shop[i].price << shop[i].garant << endl;
+				print_row(shop, i);
+				newShop[j] = shop[i];
+				j++;
 			}
 		}
+		footer();
 		if (not_result)//сповіщення про відсутність товарів з таким роком випуску
 		{
 			system("cls");
 			SetConsoleTextAttribute(hConsole, RED);
 			cout << " Товарів " << year_product << "-го року випуску не знайдено!" << endl;
 			SetConsoleTextAttribute(hConsole, WHITE);
+			break;
 		}
+		char row[30] = "Товари випущені в ";
+		char com[10];
+		_itoa(year_product, com, 10);
+		strcat(row, com);
+		saveAllResults(newShop, j, row);
 		break;
 	}
 	case 5://за фірмою виробником
@@ -432,30 +456,33 @@ void search(ElShop shop[], int last, int x)
 		bool not_result = true;
 		cout << "Введіть назву фірми-виробника: ";
 		cin >> firm_product;
+		row_validation(firm_product);
 		system("cls");
 		cout << " Товари виготовлені фірмою " << firm_product << ":" << endl;
-		cout << " №    Код      Найменування   Фірма      Рік     Ціна     Гарантія" << endl;
+		header();
 		for (int i = 0; i < last; i++)
 		{
 			fread(&shop[i], sizeof(ElShop), 1, fb);//зчитуєм кожний запис в файлі
 			if (strcmp(shop[i].firm, firm_product) == 0)//порівнюєм фірми товарів
 			{
 				not_result = false;//на випадок якщо не знайдено жодного товару
-				if (shop[i].number < 10)
-				{
-					cout << left << " " << setw(5) << shop[i].number << setw(9) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(9) << shop[i].price << shop[i].garant << endl;
-					continue;
-				}
-				cout << left << setw(6) << shop[i].number << setw(9) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(9) << shop[i].price << shop[i].garant << endl;
+				print_row(shop, i);
+				newShop[j] = shop[i];
+				j++;
 			}
 		}
+		footer();
 		if (not_result)//сповіщення про відсутність товарів токої фірми
 		{
 			system("cls");
 			SetConsoleTextAttribute(hConsole, RED);
 			cout << " Товарів від фірми " << firm_product << " не знайдено!" << endl;
 			SetConsoleTextAttribute(hConsole, WHITE);
+			break;
 		}
+		char com[30] = " Товари від фірми ";
+		strcat(com, firm_product);
+		saveAllResults(newShop, j, com);
 		break;
 	}
 	default:
@@ -471,23 +498,25 @@ void samsung_tv(ElShop shop[], int last)
 	fb = fopen("Base.bin", "rb");
 	opening_error(fb);
 	bool not_result = true;
+	ElShop newShop[MAX];
+	int j = 0;
 	system("cls");
-	cout << " Товари з кодом :" << endl;
-	cout << " №    Код      Найменування   Фірма      Рік     Ціна     Гарантія" << endl;
+	cout << " Телевізори Samsung з наявною гарантією: " << endl;
+	header();
 	for (int i = 0; i < last; i++)
 	{
 		fread(&shop[i], sizeof(ElShop), 1, fb);//зчитуєм кожний запис в файлі
-		if (!strcmp(shop[i].name, "Телевізор") && !strcmp(shop[i].garant, "так"))//порівнюєм 
+		if (!strcmp(shop[i].name, "Телевізор") && !strcmp(shop[i].firm, "Samsung") && !strcmp(shop[i].garant, "так"))//порівнюєм 
 		{
 			not_result = false;//на випадок якщо не знайдено жодного товару
-			if (shop[i].number < 10)
-			{
-				cout << left << " " << setw(5) << shop[i].number << setw(9) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(9) << shop[i].price << shop[i].garant << endl;
-				continue;
-			}
-			cout << left << setw(6) << shop[i].number << setw(9) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(9) << shop[i].price << shop[i].garant << endl;
+			print_row(shop, i);
+			newShop[j] = shop[i];
+			j++;
 		}
 	}
+	footer();
+	char com[] = "Телевізори Samsung з наявною гарантією:";
+	saveAllResults(newShop, j, com);
 	if (not_result)//сповіщення про відсутність товарів з таким кодом
 	{
 		system("cls");
@@ -502,23 +531,25 @@ void old_products(ElShop shop[], int last)
 	fb = fopen("Base.bin", "rb");
 	opening_error(fb);
 	bool not_result = true;
+	ElShop newShop[MAX];
+	int j = 0;
 	system("cls");
 	cout << " Товари випущені понад 2 роки тому з вартістю більше 1000 грн.:" << endl;
-	cout << " №    Код      Найменування   Фірма      Рік     Ціна     Гарантія" << endl;
+	header();
 	for (int i = 0; i < last; i++)
 	{
 		fread(&shop[i], sizeof(ElShop), 1, fb);//зчитуєм кожний запис в файлі
 		if (shop[i].year < 2018 && 1000 < shop[i].price)//порівнюєм 
 		{
 			not_result = false;//на випадок якщо не знайдено жодного товару
-			if (shop[i].number < 10)
-			{
-				cout << left << " " << setw(5) << shop[i].number << setw(9) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(9) << shop[i].price << shop[i].garant << endl;
-				continue;
-			}
-			cout << left << setw(6) << shop[i].number << setw(9) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(9) << shop[i].price << shop[i].garant << endl;
+			print_row(shop, i);
+			newShop[j] = shop[i];
+			j++;
 		}
 	}
+	footer();
+	char com[] = "Товари випущені понад 2 роки тому з вартістю більше 1000 грн.:";
+	saveAllResults(newShop, j, com);
 	if (not_result)//сповіщення про відсутність товарів
 	{
 		system("cls");
@@ -530,7 +561,7 @@ void old_products(ElShop shop[], int last)
 }
 void del_oldest_products(ElShop shop[], int last)
 {
-	fb = fopen("Base.bin", "r+b");
+	fb = fopen("Base.bin", "rb");
 	opening_error(fb);
 	for (int i = 0; i < last; i++)
 	{
@@ -551,7 +582,7 @@ void del_oldest_products(ElShop shop[], int last)
 	}
 	system("cls");
 	SetConsoleTextAttribute(hConsole, GREEN);
-	cout << "Видалення завершилось успішно!" << endl;
+	cout << " Видалення  товарів випущених у 2015 році завершилось успішно!" << endl;
 	SetConsoleTextAttribute(hConsole, WHITE);
 	fclose(fb);
 }
@@ -575,17 +606,15 @@ void desc_sort(ElShop shop[], int last)
 		}
 	}
 	cout << "\t\tТовари відсортовані за спаданням вартості:" << endl;
-	cout << " №    Код      Найменування   Фірма      Рік     Ціна     Гарантія" << endl;
+	header();
 	for (int i = 0; i < last; i++)
 	{
 		shop[i].number = i + 1;
-		if (shop[i].number < 10)
-		{
-			cout << left << " " << setw(5) << shop[i].number << setw(9) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(9) << shop[i].price << shop[i].garant << endl;
-			continue;
-		}
-		cout << left << setw(6) << shop[i].number << setw(9) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(9) << shop[i].price << shop[i].garant << endl;
+		print_row(shop, i);
 	}
+	char com[] = "Товари відсортовані за спаданням вартості(індивідуальне завдання):";
+	saveAllResults(shop, last, com);
+	footer();
 	fclose(fb);
 }
 void price_sort(ElShop shop[], int last, int mod)
@@ -618,17 +647,16 @@ void price_sort(ElShop shop[], int last, int mod)
 		}
 	}
 	(!mod) ? cout << "\t\tТовари відсортовані за спаданням вартості:" << endl : cout << "\t\tТовари відсортовані за зростанням вартості:" << endl;
-	cout << " №    Код      Найменування   Фірма      Рік     Ціна     Гарантія" << endl;
+	header();
 	for (int i = 0; i < last; i++)
 	{
 		shop[i].number = i + 1;
-		if (shop[i].number < 10)
-		{
-			cout << left << " " << setw(5) << shop[i].number << setw(9) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(9) << shop[i].price << shop[i].garant << endl;
-			continue;
-		}
-		cout << left << setw(6) << shop[i].number << setw(9) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(9) << shop[i].price << shop[i].garant << endl;
+		print_row(shop, i);
 	}
+	char desc[] = "Товари відсортовані за спаданням вартості:";
+	char ask[] = "Товари відсортовані за зростанням вартості:";
+	(!mod) ? saveAllResults(shop, last, desc) : saveAllResults(shop, last, ask);
+	footer();
 	fclose(fb);
 }
 void year_sort(ElShop shop[], int last, int mod)
@@ -661,17 +689,16 @@ void year_sort(ElShop shop[], int last, int mod)
 		}
 	}
 	(!mod) ? cout << "\t\tТовари відсортовані за спаданням року випуску:" << endl : cout << "\t\tТовари відсортовані за зростанням року випуску:" << endl;
-	cout << " №    Код      Найменування   Фірма      Рік     Ціна     Гарантія" << endl;
+	char desc[] = "Товари відсортовані за спаданням року випуску:";
+	char ask[] = "Товари відсортовані за зростанням року випуску:";
+	header();
 	for (int i = 0; i < last; i++)
 	{
 		shop[i].number = i + 1;
-		if (shop[i].number < 10)
-		{
-			cout << left << " " << setw(5) << shop[i].number << setw(9) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(9) << shop[i].price << shop[i].garant << endl;
-			continue;
-		}
-		cout << left << setw(6) << shop[i].number << setw(9) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(9) << shop[i].price << shop[i].garant << endl;
+		print_row(shop, i);
 	}
+	footer();
+	(!mod) ? saveAllResults(shop, last, desc) : saveAllResults(shop, last, ask);
 	fclose(fb);
 }
 void name_sort(ElShop shop[], int last, int mod)
@@ -703,18 +730,17 @@ void name_sort(ElShop shop[], int last, int mod)
 			}
 		}
 	}
-	(mod) ? cout << "\t\tТовари відсортовані в алфавітному порядку за спаданням:" << endl : cout << "\t\tТовари відсортовані в алфавітному порядку за зростанням:" << endl;
-	cout << " №    Код      Найменування   Фірма      Рік     Ціна     Гарантія" << endl;
+	(mod) ? cout << "\t\tТовари відсортовані в алфавітному порядку за спаданням найменування:" << endl : cout << "\t\tТовари відсортовані в алфавітному порядку за зростанням найменування:" << endl;
+	header();
 	for (int i = 0; i < last; i++)
 	{
 		shop[i].number = i + 1;
-		if (shop[i].number < 10)
-		{
-			cout << left << " " << setw(5) << shop[i].number << setw(9) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(9) << shop[i].price << shop[i].garant << endl;
-			continue;
-		}
-		cout << left << setw(6) << shop[i].number << setw(9) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(9) << shop[i].price << shop[i].garant << endl;
+		print_row(shop, i);
 	}
+	footer();
+	char desc[] = "Товари відсортовані в алфавітному порядку за спаданням назви:";
+	char ask[] = "Товари відсортовані в алфавітному порядку за зростанням назви:";
+	(!mod) ? saveAllResults(shop, last, desc) : saveAllResults(shop, last, ask);
 	fclose(fb);
 }
 void firm_sort(ElShop shop[], int last, int mod)
@@ -747,26 +773,31 @@ void firm_sort(ElShop shop[], int last, int mod)
 		}
 	}
 	(mod) ? cout << "\t\tТовари відсортовані в алфавітному порядку за спаданням:" << endl : cout << "\t\tТовари відсортовані в алфавітному порядку за зростанням:" << endl;
-	cout << " №    Код      Найменування   Фірма      Рік     Ціна     Гарантія" << endl;
+	header();
 	for (int i = 0; i < last; i++)
 	{
 		shop[i].number = i + 1;
-		if (shop[i].number < 10)
-		{
-			cout << left << " " << setw(5) << shop[i].number << setw(9) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(9) << shop[i].price << shop[i].garant << endl;
-			continue;
-		}
-		cout << left << setw(6) << shop[i].number << setw(9) << shop[i].id << setw(15) << shop[i].name << setw(11) << shop[i].firm << setw(8) << shop[i].year << setw(9) << shop[i].price << shop[i].garant << endl;
+		print_row(shop, i);
 	}
+	footer();
+	char desc[] = "Товари відсортовані в алфавітному порядку за спаданням фірми:";
+	char ask[] = "Товари відсортовані в алфавітному порядку за зростанням фірми:";
+	(!mod) ? saveAllResults(shop, last, desc) : saveAllResults(shop, last, ask);
 	fclose(fb);
 }
 
 int main()
 {
+	unsigned int start_time = clock();
 	SetConsoleCP(1251);
 	SetConsoleOutputCP(1251);
+	system("title Магазин електронних товарів");
+	offCursor();
+	//fullConsole();
 	int c;
 	ElShop shop[MAX];
+	f2 = fopen("results.txt", "w+");
+	opening_error(f2);
 	for (;;)//цикл для безкінечного вибору пунктів головного меню
 	{
 		switch (GetChoiceNumberMenu())
@@ -816,10 +847,6 @@ int main()
 				_getch();
 				break;
 			}
-			case 5:
-			{
-				system("cls");
-			}
 			default:
 				system("cls");
 				break;
@@ -863,7 +890,7 @@ int main()
 			system("cls");
 			switch (GetChoiseMyVarianMenu())
 			{
-			case 1://телевізори самсунг
+			case 1://телевізори самсунг з гарантією
 			{
 				int last_row = num_of_last_row();
 				samsung_tv(shop, last_row);
@@ -881,6 +908,12 @@ int main()
 			}
 			case 3://видалення товарів випущених 5 років тому
 			{
+				SetConsoleTextAttribute(hConsole, YELLOW);
+				if (GetChoiceYesOrNot())
+				{
+					break; 
+				}
+				SetConsoleTextAttribute(hConsole, WHITE);
 				int last_row = num_of_last_row();
 				del_oldest_products(shop, last_row);
 				cout << endl << " Для повернення до головного меню натисніть любу клавішу...";
@@ -925,6 +958,8 @@ int main()
 			SetConsoleTextAttribute(hConsole, GREEN);
 			cout << endl << "\t\tРоботу завершено!" << endl;
 			SetConsoleTextAttribute(hConsole, WHITE);
+			fclose(f2);
+			cout << " runtime = " << setprecision(2) << clock() / 1000.0 << " s." << endl;
 			exit(1);
 			return 0;
 			break;
@@ -939,5 +974,7 @@ int main()
 		}
 		}
 	}
+	cout << "runtime = " << clock() / 1000.0 << endl;
+	fclose(f2);
 	return 0;
 }
